@@ -1,0 +1,7 @@
+target_channel,morphology,level,min_scheduled_sigma,max_scheduled_sigma,bound_k_sigma,verdict
+PPG,bias,L3,2.0,4.0,4.0,can clip (part of the draw range is beyond the bound)
+PPG,bias,L4,4.0,8.0,4.0,always clips (whole draw range is beyond the bound)
+PPG,drift,L4,4.0,4.0,4.0,always clips (whole draw range is beyond the bound)
+PPG,spike,L4,4.0,4.0,4.0,always clips (whole draw range is beyond the bound)
+PPG,stuck_at,L3,5.0,5.0,4.0,always clips (whole draw range is beyond the bound)
+PPG,stuck_at,L4,10.0,10.0,4.0,always clips (whole draw range is beyond the bound)

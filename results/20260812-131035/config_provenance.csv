@@ -1,0 +1,3 @@
+paper_table,quantity,source,n_values,source_file,source_md5,fs_hz,fs_source
+III,severity schedule,injection_generator.SEVERITY_SCHEDULE,52,injection_generator.py,a0de16f313bb,125.0,injection_generator.Window.fs
+IV,plausibility bounds,injection_generator.PLAUSIBILITY_SIGMA,4,injection_generator.py,a0de16f313bb,125.0,injection_generator.Window.fs

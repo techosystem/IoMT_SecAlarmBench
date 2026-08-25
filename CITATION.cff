@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this benchmark, please cite the paper below and the source corpora."
+title: "IoMT-SecAlarmBench: A Counterfactual Benchmark for Integrity Attacks in IoMT"
+abstract: >-
+  A semi-synthetic benchmark that injects controlled integrity attacks into
+  genuine coupled ECG+PPG ICU recordings under a factorial design, retaining
+  the counterfactual clean signal for every attacked window.
+type: software
+license: MIT
+repository-code: "https://github.com/techosystem/IoMT-SecAlarmBench"
+version: "1.0.0"
+date-released: "2026-08-21"
+keywords:
+  - IoMT
+  - benchmark
+  - false data injection
+  - replay attack
+  - anomaly detection
+  - counterfactual root-cause analysis
+authors:
+  - Full_name: "Emmanuel Ugwuabonyi"   
+    affiliation: "University of Maryland, Baltimore County"
+
+  - Full_name: "Dmitri Perkins"
+    affiliation: "University of Maryland, Baltimore County"
+    
+preferred-citation:
+  type: conference-paper
+  title: "IoMT-SecAlarmBench: A Counterfactual Benchmark for Integrity Attacks in IoMT"
+  year: 2026
+  collection-title: "Proc. IEEE International Conference on Big Data (BigData)"
+  authors:
+    - First-name: "Emmanuel"
+      Last-name: "Ugwuabonyi"
+   
+    - First-name: "Dmitri"
+      Last-name: "Perkins"

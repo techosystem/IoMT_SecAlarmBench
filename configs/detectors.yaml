@@ -1,0 +1,21 @@
+common:
+  epochs: 40
+  grad_clip: 1.0
+  seeds: [0, 1, 2, 3, 4]
+  deterministic: true          # required; see docs/REPRODUCE.md
+  temporal_pooling: 10         # 10x; see the LSTM-AE no-pooling ablation
+  train_on: [physiology-normal]
+
+evaluation:
+  point_adjustment: false      # never
+  event_aware: true
+  matched_far: 0.10            # calibrated on VALIDATION normals
+  report_chance_floor: true
+
+detectors:
+  isolation_forest: {features: engineered_22, n_estimators: 100}
+  lstm_ae:          {hidden: 64, layers: 2}
+  usad:             {hidden: 64, alpha: 0.5, beta: 0.5}
+  omnianomaly:      {hidden: 64, latent: 8}
+  gdn:              {embed: 64, topk: 2}
+  tranad:           {d_model: 64, heads: 4}

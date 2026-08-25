@@ -1,0 +1,89 @@
+{
+  "run_id": "20260730-222727",
+  "timestamp_utc": "2026-07-30T22:59:32+00:00",
+  "config": {
+    "repo": "/content/drive/MyDrive/Colab Notebooks/iomt_secalarmbench",
+    "cinc_dir": "/content/drive/MyDrive/Colab Notebooks/iomt_secalarmbench/data/cinc2015/training",
+    "wustl_csv": "/content/drive/MyDrive/Colab Notebooks/iomt_secalarmbench/data/wustl/wustl-ehms-2020.csv",
+    "results_root": "/content/drive/MyDrive/Colab Notebooks/iomt_secalarmbench/results",
+    "cache_dir": "/content/iomt_cache",
+    "seed": 20260723,
+    "target_channels": [
+      "PPG"
+    ],
+    "win_sec": 10.0,
+    "hop_sec": 5.0,
+    "max_hosts_per_record": 2,
+    "artifact_frac": 0.1,
+    "core_channels": [
+      "ECG",
+      "PPG"
+    ],
+    "limit_records": null,
+    "epochs": 40,
+    "detectors": [
+      "IsolationForest",
+      "LSTM-AE",
+      "USAD",
+      "GDN",
+      "TranAD",
+      "OmniAnomaly"
+    ],
+    "n_boot": 2000,
+    "ci": 95,
+    "target_prevalence": 0.05,
+    "n_prev_rep": 200,
+    "ablation_pools": [
+      1
+    ],
+    "ablation_batch": 64,
+    "far_targets": [
+      0.01,
+      0.05,
+      0.1
+    ],
+    "far_headline": 0.1,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "versions": {
+    "python": "3.12.13",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "numpy": "2.0.2",
+    "pandas": "2.2.2",
+    "scipy": "1.15.3",
+    "sklearn": "1.6.1",
+    "torch": "2.11.0+cu128",
+    "tigramite": "?",
+    "dowhy": "0.14",
+    "gpu": "NVIDIA A100-SXM4-40GB"
+  },
+  "source_md5": {
+    "cinc_loader.py": "c956028002cc",
+    "cinc_adapter.py": "30f421de496a",
+    "injection_generator.py": "a0de16f313bb",
+    "eval_harness.py": "b414d009c1ea",
+    "deep_detectors.py": "0cd92c86a5c3",
+    "rq1_report.py": "9aa17de18a6e",
+    "rq3_discrimination.py": "a375aaba5f6d",
+    "wustl_leakage.py": "11af5007d3c4",
+    "run_all.py": "260375dfeaae"
+  },
+  "elapsed_s": 1920.2,
+  "n_records": 627,
+  "n_windows": 78729,
+  "class_counts": {
+    "attack": 39882,
+    "physiology_normal": 32875,
+    "fault_artifact": 5350,
+    "physiology_event": 622
+  },
+  "stages_run": [
+    "matched"
+  ]
+}

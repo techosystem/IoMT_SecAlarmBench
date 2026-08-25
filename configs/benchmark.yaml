@@ -1,0 +1,59 @@
+# Benchmark construction. These constants are the source of Table I; any edit
+# changes the manifest MD5 and therefore invalidates comparison with the
+# reported runs 20260730-205501 / 20260730-222727.
+seed: 0
+
+source:
+  cinc_root: data/cinc2015
+  wustl_csv: data/wustl/wustl-ehms-2020.csv
+
+windowing:
+  fs_hz: 125            # common resample base
+  window_s: 10
+  stride_s: 5
+  alarm_sample: 37500   # 300 s at 125 Hz
+  core_channels: [ECG, PPG]
+
+filtering:
+  ecg_band_hz: [0.5, 40.0]     # zero-phase 4th-order Butterworth
+  ppg_band_hz: [0.5, 8.0]
+  butter_order: 4
+  hr_plausible_bpm: [30, 200]
+  artifact_frac_threshold: 0.10  # > this => fault/artifact, never an injection host
+
+normalization:
+  mode: within_patient_zscore
+  retain_stats: true            # so bounds de-normalize to physical units
+
+plausibility:                   # [l_c, u_c] = mu_c +/- k_c * sigma_bar_c
+  k_ecg: 5.0
+  k_ppg: 4.0
+  estimated_on: pre_onset_quarter
+
+injection:
+  target_channels: [PPG]        # KNOWN LIMITATION: single target => attribution degenerate
+  host_windows_per_record: 2
+  morphologies: [spike, stuck_at, drift, bias]
+  levels: [L1, L2, L3, L4]
+  regimes: [in_bound, out_of_bound]
+  replay:
+    sources: [same_patient, cross_patient]
+    staleness_s: 3.0
+
+severity:   # Table I. dagger = reaches plausibility bound; in-bound FDI clipped.
+  spike:     {form: additive_point,   L1: 0.5, L2: 1.0, L3: 2.0, L4: 4.0,
+              duration_s: [0.024, 0.024, 0.040, 0.040], dagger: [L4]}
+  stuck_at:  {form: frozen_constant,  L1: [0, 1], L2: [0, 3], L3: [0, 5], L4: [0, 10],
+              duration_s: [1, 2, 4, 4], dagger: [L3, L4]}
+  drift:     {form: linear_ramp,      L1: 1.0, L2: 2.0, L3: 2.0, L4: 4.0,
+              duration_s: [2, 2, 4, 4], dagger: [L4]}
+  bias:      {form: constant_offset,  L1: [0.5, 1], L2: [1, 2], L3: [2, 4], L4: [4, 8],
+              duration_s: [2, 4, 4, 4], dagger: [L3, L4]}
+
+splits:
+  mode: patient_wise
+  stratify_by: [arrhythmia_type, alarm_verdict]
+  train: 436
+  val: 91
+  test: 100
+  assert_disjoint: true
