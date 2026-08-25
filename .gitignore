@@ -218,3 +218,6 @@ __marimo__/
 .streamlit/secrets.toml
 results_selftest/
 results_selftest/
+.DS_Store
+results_selftest/
+.venv/
