@@ -3,7 +3,7 @@
 **A counterfactual benchmark for integrity attacks in the Internet of Medical Things.**
 
 Companion code for *"IoMT-SecAlarmBench: A Counterfactual Benchmark for
-Integrity Attacks in IoMT"* (IEEE BigData 2026).
+Integrity Attacks in IoMT"*.
 
 When an ICU alarm fires, an anomaly detector can tell you the reading is
 unusual. It cannot tell you *why* — genuine deterioration, a sensor fault, or
