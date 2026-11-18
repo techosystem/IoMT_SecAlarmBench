@@ -1,6 +1,6 @@
-# Benchmark construction. These constants are the source of Table I; any edit
-# changes the manifest MD5 and therefore invalidates comparison with the
-# reported runs 20260730-205501 / 20260730-222727.
+# Benchmark construction (documentation of the constants used by the code).
+# The severity block is Table I of the paper. Any edit changes the manifest MD5
+# and therefore invalidates comparison with the reported results.
 seed: 0
 
 source:
@@ -31,7 +31,12 @@ plausibility:                   # [l_c, u_c] = mu_c +/- k_c * sigma_bar_c
   estimated_on: pre_onset_quarter
 
 injection:
-  target_channels: [PPG]        # KNOWN LIMITATION: single target => attribution degenerate
+  target_channels: [PPG]        # C1-PPG; the other settings are listed below
+  attacker_settings:            # paper Section III; generated on the same hosts
+    C1_PPG: one stream (PPG), 34 conditions
+    C1_ECG: one stream (ECG), the same 34 conditions
+    C2_JOINT_INDEPENDENT: both channels, altered independently, 33 conditions
+    C3_JOINT_COORDINATED: both channels, kept consistent (joint replay, coordinated FDI/spoofing, rate warp), 38 conditions
   host_windows_per_record: 2
   morphologies: [spike, stuck_at, drift, bias]
   levels: [L1, L2, L3, L4]
@@ -51,7 +56,7 @@ severity:   # Table I. dagger = reaches plausibility bound; in-bound FDI clipped
               duration_s: [2, 4, 4, 4], dagger: [L3, L4]}
 
 splits:
-  mode: patient_wise
+  mode: record_disjoint         # CinC has no patient identifiers
   stratify_by: [arrhythmia_type, alarm_verdict]
   train: 436
   val: 91

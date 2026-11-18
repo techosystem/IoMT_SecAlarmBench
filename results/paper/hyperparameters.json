@@ -1,0 +1,114 @@
+{
+  "IsolationForest": {
+    "class": "IsolationForestDetector",
+    "IsolationForest.bootstrap": false,
+    "IsolationForest.contamination": "auto",
+    "IsolationForest.max_features": 1.0,
+    "IsolationForest.max_samples": "auto",
+    "IsolationForest.n_estimators": 200,
+    "IsolationForest.n_jobs": null,
+    "IsolationForest.random_state": 0,
+    "IsolationForest.verbose": 0,
+    "IsolationForest.warm_start": false,
+    "StandardScaler.copy": true,
+    "StandardScaler.with_mean": true,
+    "StandardScaler.with_std": true
+  },
+  "USAD": {
+    "class": "USADDetector",
+    "latent": 40,
+    "hidden": 256,
+    "epochs": 40,
+    "lr": 0.0001,
+    "batch": 256,
+    "alpha": 0.5,
+    "beta": 0.5,
+    "clip": 1.0,
+    "seed": 0,
+    "verbose": false,
+    "n_params": 1956528
+  },
+  "LSTM-AE": {
+    "class": "LSTMAEDetector",
+    "epochs": 40,
+    "lr": 0.001,
+    "batch": 256,
+    "seed": 0,
+    "verbose": false,
+    "pool": 10,
+    "hidden": 64,
+    "latent": 32,
+    "n_params": 44706
+  },
+  "GDN": {
+    "class": "GDNDetector",
+    "pool": 10,
+    "w": 20,
+    "emb_dim": 32,
+    "hidden": 64,
+    "epochs": 40,
+    "lr": 0.001,
+    "batch": 512,
+    "train_pos": 16,
+    "clip": 1.0,
+    "seed": 0,
+    "verbose": false,
+    "n_params": 7874
+  },
+  "TranAD": {
+    "class": "TranADDetector",
+    "pool": 10,
+    "d_model": 64,
+    "nhead": 4,
+    "layers": 1,
+    "epochs": 40,
+    "lr": 0.001,
+    "batch": 256,
+    "clip": 1.0,
+    "seed": 0,
+    "verbose": false,
+    "n_params": 142724
+  },
+  "OmniAnomaly": {
+    "class": "OmniAnomalyDetector",
+    "pool": 10,
+    "hidden": 64,
+    "latent": 16,
+    "epochs": 40,
+    "lr": 0.001,
+    "batch": 256,
+    "beta": 1.0,
+    "clip": 1.0,
+    "seed": 0,
+    "verbose": false,
+    "n_params": 31140
+  },
+  "RandomForest (RQ4, WUSTL)": {
+    "n_jobs": -1,
+    "n_estimators": 300,
+    "class_weight": "balanced",
+    "random_state": 20260724
+  },
+  "Coherence": {
+    "features": [
+      "hr_diff",
+      "unmatched",
+      "ptt_sd",
+      "ptt_maxdev",
+      "cnt_mismatch"
+    ],
+    "score": "sum of positive robust z (train normals)",
+    "ecg_detector": "squared slope, 150 ms integration, 0.30 x 90th-percentile peak (floor 0.25 x median of training normals)",
+    "ppg_detector": "max upslope, 50 ms smoothing, 0.30 x 90th-percentile peak (same floor rule)"
+  },
+  "_fit_seconds_mean": {
+    "IsolationForest": 0.433732940200116,
+    "USAD": 28.807888085799867,
+    "LSTM-AE": 18.915512368799956,
+    "GDN": 157.19793689099993,
+    "TranAD": 67.16420645100007,
+    "OmniAnomaly": 22.89642377020009,
+    "Coherence": 0.0,
+    "Coherence-NK": 0.0
+  }
+}

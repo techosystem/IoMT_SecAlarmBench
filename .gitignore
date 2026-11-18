@@ -221,3 +221,9 @@ results_selftest/
 .DS_Store
 results_selftest/
 .venv/
+
+# IoMT-SecAlarmBench: never commit source data, generated windows or caches
+data/
+results/*/scores/
+*.parquet
+fig2_grid.pdf

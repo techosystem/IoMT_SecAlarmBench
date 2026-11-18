@@ -22,11 +22,11 @@ cat <<'NOTE'
     Not publicly downloadable. Request it from the dataset authors, then place
     the CSV at:
         data/wustl/wustl-ehms-2020.csv
-    Used only for the leakage audit and the cross-layer coherence check.
+    Used only for the leakage audit.
 
 ==> MIMIC-III Waveform  (optional)
     Characterised but NOT injected in this release. Only needed if you are
     extending the benchmark to long recordings.
 
 NOTE
-echo "Next: make benchmark"
+echo "Next: make paper"

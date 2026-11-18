@@ -1,0 +1,101 @@
+{
+  "importances": {
+    "all features (identifiers kept)": {
+      "top": {
+        "SrcMac": 0.588,
+        "Flgs": 0.064,
+        "DIntPkt": 0.06,
+        "DstJitter": 0.05,
+        "Load": 0.035,
+        "SrcLoad": 0.031
+      },
+      "identifier_share": 0.6627176619228732
+    },
+    "identifiers + flags removed (published)": {
+      "top": {
+        "DIntPkt": 0.136,
+        "DstJitter": 0.128,
+        "SrcLoad": 0.083,
+        "SIntPkt": 0.074,
+        "Packet_num": 0.072,
+        "Rate": 0.069
+      },
+      "identifier_share": 0.0
+    },
+    "identifiers removed, flags kept": {
+      "top": {
+        "DIntPkt": 0.119,
+        "DstJitter": 0.118,
+        "Flgs": 0.115,
+        "SrcLoad": 0.067,
+        "Packet_num": 0.064,
+        "DstLoad": 0.063
+      },
+      "identifier_share": 0.11528667355826956
+    },
+    "identifiers + flags + packet counter removed": {
+      "top": {
+        "DstJitter": 0.148,
+        "DIntPkt": 0.142,
+        "SIntPkt": 0.077,
+        "Load": 0.077,
+        "SrcLoad": 0.074,
+        "DstLoad": 0.072
+      },
+      "identifier_share": 0.0
+    },
+    "network only (no identifiers, no flags)": {
+      "top": {
+        "DIntPkt": 0.172,
+        "DstJitter": 0.153,
+        "SrcLoad": 0.101,
+        "SIntPkt": 0.092,
+        "Packet_num": 0.091,
+        "Load": 0.085
+      },
+      "identifier_share": 0.0
+    },
+    "biometrics only": {
+      "top": {
+        "Temp": 0.213,
+        "Resp_Rate": 0.153,
+        "Pulse_Rate": 0.15,
+        "ST": 0.129,
+        "Heart_rate": 0.126,
+        "SpO2": 0.107
+      },
+      "identifier_share": 0.0
+    }
+  },
+  "columns_found": {
+    "ids": [
+      "SrcAddr",
+      "DstAddr",
+      "Sport",
+      "Dport",
+      "SrcMac",
+      "DstMac"
+    ],
+    "flags": [
+      "Flgs"
+    ],
+    "dup": [
+      "Attack Category"
+    ],
+    "bio": [
+      "Temp",
+      "SpO2",
+      "Pulse_Rate",
+      "SYS",
+      "DIA",
+      "Heart_rate",
+      "Resp_Rate",
+      "ST"
+    ],
+    "counter": [
+      "Packet_num"
+    ]
+  },
+  "n": 16318,
+  "attack_rate": 0.1253830126240961
+}

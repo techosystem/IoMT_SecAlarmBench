@@ -1,8 +1,8 @@
 # Datasheet for IoMT-SecAlarmBench
 
 Following Gebru et al., *Datasheets for Datasets* (CACM 64(12), 2021), with
-the medical extensions of DAIMS (arXiv:2501.14094). Section X of the paper is
-a summary of this document.
+the medical extensions of DAIMS (arXiv:2501.14094). This datasheet describes
+release v2.0.0.
 
 ---
 
@@ -38,21 +38,30 @@ Maryland, Baltimore County. *(Add grant numbers before release.)*
 
 **What do instances represent?**
 A 10-second window of two coupled physiological channels (ECG lead and
-PPG/PLETH) at 125 Hz, from a single ICU patient record, with a 5-second
-stride between consecutive windows.
+PPG/PLETH) at 125 Hz, from a single ICU record, with a 5-second stride between
+consecutive windows.
 
 **How many instances are there?**
 
 | Class | Windows |
 |---|---|
-| physiology-normal | 32,875 |
+| physiology-normal | 32,875 (1,110 in the alarm zone) |
 | physiology-event | 622 |
-| fault / artifact | 5,350 |
-| **attack** | **39,882** |
+| fault: artifact-confirmed | 4,368 |
+| fault: monitor false alarm | 982 |
+| **attack, C1-PPG** | **39,882** |
 | — replay (same / cross-patient) | 2,346 (1,173 / 1,173) |
 | — FDI (4 morphologies × L1–L4) | 18,768 |
 | — spoofing (4 morphologies × L1–L4) | 18,768 |
-| **Total** | **78,729** |
+| **attack, C1-ECG** (same 34 conditions on ECG) | **39,882** |
+| **attack, C2** (both channels, independent) | **38,709** |
+| **attack, C3** (both channels, consistent) | **44,574** |
+| **Total** | **201,894** |
+
+All attacks use the same 1,173 host windows (up to two clean pre-alarm windows
+per record), so attack windows are variants of these hosts, not independent
+observations. C3 adds joint replay and a coordinated heart-rate warp to the
+grid.
 
 **What does each instance consist of?**
 Raw 2-channel waveform; 22 engineered per-window features (ten per channel
@@ -66,7 +75,9 @@ verdict; and unified record/patient identifiers.
 Yes — a four-way cause label in {physiology-normal, physiology-event,
 fault/artifact, attack}, assigned deterministically:
 
-- entirely before the 300 s alarm onset → **physiology-normal**
+- entirely before the 300 s alarm onset → **physiology-normal**. Windows ending
+  in 290–300 s, where CinC annotates the event onset, are flagged as
+  *alarm-zone* windows; the analyses report results with and without them.
 - post-onset in a record with a native *true* alarm verdict → **physiology-event**
 - post-onset in a *false*-alarm record, **or** artifact mask covering >10% of
   samples → **fault/artifact**
@@ -79,13 +90,17 @@ class exactly: >0.10 mask-driven (4,368 windows), ≤0.10 verdict-driven (982).
 Yes, and by design. Exact counterfactual ground truth exists at the signal
 level for injected attacks only; there is no equivalent counterfactual for
 genuine physiological events, because no intervention was performed on them.
-The alarm-level counterfactual oracle is specified but not implemented.
+Alarm-level counterfactuals are computed with a specified reference monitor
+for the three rate alarms (asystole, extreme bradycardia, extreme
+tachycardia); ventricular alarms, which need beat-morphology analysis, are not
+covered.
 
 **Are there errors, noise, or redundancies?**
 The fault class is heterogeneous *by design*, combining genuine sensor
 corruption (mask-driven) with monitor false alarms (verdict-driven). These
-behave measurably differently — selectivity 6.01 ± 0.69 versus 3.67 ± 0.28 —
-and are separable via `artifact_frac`. Monitor false-alarm windows are not
+behave measurably differently: for Isolation Forest, artifact-confirmed windows
+reach AUROC 0.661 against normals, while monitor false alarms stay near chance
+(0.48–0.56) for every detector. The two are separable via `artifact_frac`. Monitor false-alarm windows are not
 necessarily clean signal; their false-alarm status selects for unusual
 patterns.
 
@@ -124,7 +139,7 @@ this problem class.
 
 **Over what timeframe?**
 Source recordings predate this work. Benchmark generation and the reported
-evaluation runs: July 2026.
+evaluation runs: July–October 2026.
 
 **Was an ethical review conducted?**
 No new human-subject data was collected; the work is secondary analysis of
@@ -139,7 +154,7 @@ publicly released de-identified corpora under their respective licences.
 All channels resampled to a 125 Hz common base and cut into 10 s windows with
 5 s stride, each carrying a validity flag. ECG band-pass filtered (zero-phase
 4th-order Butterworth, 0.5–40 Hz); pulsatile channel 0.5–8 Hz. Channels
-z-scored within patient (verified σ̄ ≈ 1), with normalisation statistics
+z-scored within record (verified σ̄ ≈ 1), with normalisation statistics
 retained so bounds can be de-normalised to physical units.
 
 **Were artifacts removed?**
@@ -163,10 +178,12 @@ providers under their own terms.
 ## 5. Uses
 
 **What has the dataset been used for?**
-Baseline evaluation of six unsupervised detectors across five method families
-(Isolation Forest, LSTM-AE, USAD, OmniAnomaly, GDN, TranAD) on detection,
-stealthiness-stratified robustness, three-way discrimination, and edge
-efficiency; plus an identifier-leakage audit of WUSTL-EHMS-2020.
+Baseline evaluation of six unsupervised detectors (Isolation Forest, LSTM-AE,
+USAD, OmniAnomaly, GDN, TranAD) and a heart-rate and pulse-transit coherence
+baseline on detection, per-morphology and per-setting detection, alarm-level
+counterfactuals, cause discrimination under position-matched controls, and a
+channel-attribution baseline; plus an identifier-leakage audit of
+WUSTL-EHMS-2020.
 
 **What else could it be used for?**
 Counterfactual root-cause attribution, signal-recovery evaluation against the
@@ -210,20 +227,21 @@ None known beyond the source-dataset terms.
 ## 7. Maintenance
 
 **Who maintains it, and how can they be contacted?**
-*(Insert maintainer name and address before release.)*
+Emmanuel C. Ugwuabonyi (ugwuabonyi@umbc.edu), University of Maryland,
+Baltimore County. Issues and questions: GitHub issues on this repository.
 
 **Will it be updated?**
-Planned: extension to longer continuous ICU recordings; multi-channel
-injection targets to make attribution non-degenerate; implementation of the
-alarm-level counterfactual oracle; multi-protocol cyber-layer captures.
+Planned: extension to longer continuous ICU recordings (MIMIC-III Waveform),
+synchronized network traffic, and dedicated causal attribution methods.
 
 **How will updates be communicated?**
 Through GitHub releases, each with a version tag. Archived releases carry a
 Zenodo DOI so results remain pinned to an exact code state.
 
 **Will older versions remain available?**
-Yes — via git tags and archived DOIs. Reported results correspond to runs
-`20260730-205501` and `20260730-222727`.
+Yes — via git tags and archived DOIs. The results reported in the paper are in
+`results/paper/` (release v2.0.0). The first release, with the C1-PPG setting
+only, is tagged `v1.0.0`.
 
 **Can others contribute?**
 Yes, via pull request. Contributions that change generation behaviour must

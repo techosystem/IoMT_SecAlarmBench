@@ -1,59 +1,37 @@
 #!/usr/bin/env python3
 """
-IoMT-SecAlarmBench — run_all.py
-===============================
+Single-setting (C1-PPG) pipeline for IoMT-SecAlarmBench.
 
-One command that regenerates every number in the paper, into a timestamped results
-directory, with a manifest recording the exact config, package versions and source-file
-hashes that produced it.
+Regenerates the C1-PPG detection, matched-budget, multi-seed, discrimination and
+leakage results into a timestamped results directory, with a manifest that records
+the configuration, package versions and source-file hashes. The four-setting
+analyses reported in the paper are run by scripts/reproduce_paper.py.
 
-This exists because the pipeline currently lives in notebook cells with manual ordering,
-hand-set per-detector epochs, and results written flat into the repo root next to the
-source. That is how a stale copy of a result (or the paper) gets used by mistake. Nothing
-here reimplements the science: it imports cinc_loader, injection_generator, eval_harness,
-deep_detectors, rq1_report, rq3_discrimination and wustl_leakage unchanged.
+Usage:
+    python scripts/run_all.py --self-test        # wiring check on synthetic records
+    python scripts/run_all.py                    # default stages
+    python scripts/run_all.py --stages rq1 --detectors IsolationForest,USAD
+    python scripts/run_all.py --stages config    # design constants, no data needed
 
-QUICK START (Colab)
--------------------
-    # wiring check on synthetic records -- no data, no GPU, ~1 min
-    !cd "/content/drive/MyDrive/Colab Notebooks/iomt_secalarmbench" && python run_all.py --self-test
-
-    # the real run
-    !cd "/content/drive/MyDrive/Colab Notebooks/iomt_secalarmbench" && python run_all.py
-
-    # one stage only
-    !... python run_all.py --stages rq1 --detectors IsolationForest,USAD
-
-    # the design tables, with no data and no GPU
-    !... python run_all.py --stages config
-
-    # the pooling ablation that decides whether the spike claim survives review
-    !... python run_all.py --stages ablation
-
-Or from a notebook cell:
+Or from Python:
     import run_all; res = run_all.main(["--stages", "rq1", "--detectors", "IsolationForest"])
 
-STAGES
-------
-  config    emit the hand-authored design constants (paper Tables III severity schedule
-            and IV plausibility bounds) as CSVs, read out of injection_generator rather
-            than typed into the paper -- no data, no GPU, ~1 s
-  checks    invariant checks on the built table (classes, keys, counts, prevalence)
-  table2    dataset composition (paper Table 2)
-  rq1       detection + RQ4 stealthiness for every detector, via rq1_report
-  matched   threshold-free AUPRC per attack subset + detection at a MATCHED false-alarm
-            budget -- removes the operating-point confound that inflates a detector's
-            apparent replay advantage when it simply flags more
-  multiseed repeat each detector over several seeds and report mean +/- sd; cuDNN is
-            nondeterministic, so single-run deep-detector values are not reportable
-  rq3       3-way and 4-way discrimination
-  wustl     identifier-leakage audit
-  ablation  LSTM-AE with the pooling front-end removed (pool=1) -- tests whether the
-            "transient spikes evade all detectors" finding is a method result or an
-            artefact of the x10 average-pool every deep detector shares
-  summary   writes SUMMARY.md with all paper-ready tables
+Stages:
+  config     design constants (severity schedule and plausibility bounds) as CSVs,
+             read from injection_generator; no data, no GPU
+  checks     invariant checks on the built table (classes, keys, counts, prevalence)
+  table2     dataset composition
+  rq1        detection and per-morphology results for every detector
+             (detection_report)
+  matched    threshold-free AUPRC per attack subset and detection at a matched
+             false-alarm budget
+  multiseed  each detector over several seeds, mean +/- sd
+  rq3        3-way and 4-way discrimination
+  wustl      identifier-leakage audit
+  ablation   LSTM-AE without the pooling front-end (pool=1)
+  summary    SUMMARY.md with all tables
 
-Default: checks,table2,rq1,rq3,wustl,summary  (ablation is opt-in; it is slower)
+Default: config, checks, table2, rq1, matched, rq3, wustl, summary.
 """
 
 from __future__ import annotations
@@ -92,9 +70,9 @@ CONFIG = dict(
     results_root=f"{REPO}/results",
     cache_dir=str(pathlib.Path(tempfile.gettempdir()) / "iomt_cache"),
 
-    # --- generation (changing any of these changes every number in §7) ---
+    # --- generation (changing any of these changes every reported number) ---
     seed=20260723,
-    target_channels=("PPG",),                 # ("ECG","PPG") un-degenerates RQ2
+    target_channels=("PPG",),                 # ("ECG","PPG") makes channel attribution non-trivial
     win_sec=10.0,
     hop_sec=5.0,
     max_hosts_per_record=2,
@@ -136,8 +114,8 @@ NO_DATA_STAGES = {"config", "summary"}
 # --------------------------------------------------------------------------- #
 
 SOURCE_FILES = ["cinc_loader.py", "cinc_adapter.py", "injection_generator.py",
-                "eval_harness.py", "deep_detectors.py", "rq1_report.py",
-                "rq3_discrimination.py", "wustl_leakage.py", "run_all.py"]
+                "eval_harness.py", "deep_detectors.py", "detection_report.py",
+                "discrimination.py", "leakage_audit.py", "run_all.py"]
 
 
 def _md5(path):
@@ -275,11 +253,9 @@ def build(cfg, records, need_windows=True, use_cache=True, verbose=True):
 # stage: config — emit the hand-authored design constants as tables
 # --------------------------------------------------------------------------- #
 #
-# Paper Tables III (per-morphology severity schedule) and IV (plausibility bounds) are
-# design INPUTS, not measured outputs: they transcribe constants that live in
-# injection_generator.py. Every other table in the paper is measured or hashed, but
-# these two were typed by hand, so they can drift from the code silently — the failure
-# mode that put a stale method list in §6.1 and a hardcoded title in md2ieee.py.
+# The severity schedule (paper Table I) and the plausibility bounds are design
+# INPUTS, not measured outputs: they transcribe constants that live in
+# injection_generator.py. Typed by hand, they could drift from the code silently.
 #
 # This stage reads the constants out of the module and writes them, so the design
 # tables get the same provenance as the results tables. It needs no data, no GPU and no
@@ -871,7 +847,7 @@ def make_detector(name, cfg, **over):
 
 
 def stage_rq1(cfg, df, feat_cols, windows, run_dir, detectors=None):
-    from rq1_report import run_rq1, consolidate
+    from detection_report import run_rq1, consolidate
     results = []
     Xfeat = df[feat_cols].values
     for name in (detectors or cfg["detectors"]):
@@ -915,7 +891,7 @@ def stage_ablation(cfg, df, windows, run_dir):
     failing five times rather than five independent method failures. This reruns LSTM-AE
     with the pool removed. If spike detection rises materially, the claim must be
     restated as conditional on the pooling front-end."""
-    from rq1_report import run_rq1
+    from detection_report import run_rq1
     if windows is None:
         print("[ablation] needs the window tensor — skipped")
         return []
@@ -950,13 +926,13 @@ def stage_ablation(cfg, df, windows, run_dir):
 # --------------------------------------------------------------------------- #
 
 def stage_matched(cfg, df, feat_cols, windows, run_dir, detectors=None):
-    """The comparison the published table should have made: threshold-free per attack
-    subset, and detection at a common false-alarm budget calibrated on the validation
-    normals. Run over the SAME seeds and the SAME deterministic configuration as the
-    multi-seed detection stage, so Tables 4-R/5-R and Table 3-R share one provenance.
+    """Threshold-free results per attack subset, and detection at a common false-alarm
+    budget calibrated on the validation normals. Run over the SAME seeds and the SAME
+    deterministic configuration as the multi-seed detection stage, so all of its tables
+    share one provenance.
     With a single seed the record-level bootstrap CIs are kept; with several, the
     across-seed sd replaces them."""
-    import rq1_report as R
+    import detection_report as R
     print(f"[determinism] {R.set_determinism()}")
     seeds = tuple(cfg["seeds"])
     multi = len(seeds) > 1
@@ -1033,7 +1009,7 @@ def stage_matched(cfg, df, feat_cols, windows, run_dir, detectors=None):
 
 def stage_multiseed(cfg, df, feat_cols, windows, run_dir, detectors=None):
     """Deep detectors are not bit-reproducible under cuDNN. Report mean +/- sd."""
-    import rq1_report as R
+    import detection_report as R
     print(f"[determinism] {R.set_determinism()}")
     Xfeat = df[feat_cols].values
     all_summ = []
@@ -1079,7 +1055,7 @@ def stage_multiseed(cfg, df, feat_cols, windows, run_dir, detectors=None):
 # --------------------------------------------------------------------------- #
 
 def stage_rq3(cfg, df, feat_cols, run_dir):
-    from rq3_discrimination import run_rq3
+    from discrimination import run_rq3
     out = {}
     for mode in ("4way", "3way"):
         try:
@@ -1090,7 +1066,7 @@ def stage_rq3(cfg, df, feat_cols, run_dir):
 
 
 def stage_wustl(cfg, run_dir):
-    from wustl_leakage import run_leakage_audit
+    from leakage_audit import run_leakage_audit
     if not os.path.exists(cfg["wustl_csv"]):
         print(f"[wustl] CSV not found at {cfg['wustl_csv']} — skipped")
         return None

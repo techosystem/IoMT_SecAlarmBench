@@ -20,7 +20,7 @@ the one the reported results were computed on.
 | Corpus | Role here | Access | License |
 |---|---|---|---|
 | PhysioNet/CinC 2015 | physiological spine (627 records) | physionet.org/content/challenge-2015/ | Open Data Commons Attribution (ODC-BY) v1.0 — **verify on the landing page** |
-| WUSTL-EHMS-2020 | dual-modality bridge, leakage audit | request from the dataset authors | per the authors' stated terms |
+| WUSTL-EHMS-2020 | identifier-leakage audit only | request from the dataset authors | per the authors' stated terms |
 | MIMIC-III Waveform | characterised, not injected | physionet.org/content/mimic3wdb/ | ODC-BY v1.0 — **verify** |
 
 You must comply with each source corpus's terms independently of the MIT

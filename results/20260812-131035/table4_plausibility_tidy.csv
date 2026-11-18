@@ -1,5 +1,0 @@
-channel,param,value,role
-ECG,k_sigma,5.0,k_sigma
-PPG,k_sigma,4.0,k_sigma
-ABP,k_sigma,4.0,k_sigma
-RESP,k_sigma,4.0,k_sigma

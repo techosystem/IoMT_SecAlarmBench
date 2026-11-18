@@ -1,29 +1,21 @@
 """
-IoMT-SecAlarmBench — Attack Injection Generator (v2, patched)
-=============================================================
+Attack injection generator for IoMT-SecAlarmBench.
 
-Manufactures the integrity-attack windows (FDI / replay / value-spoofing) that no
-public IoMT dataset carries natively, by injecting into clean, preprocessed
-CinC-2015 / MIMIC-III waveform windows. Every attacked window ships with its clean
-counterfactual and its true cause — the counterfactual ground truth.
+Injects integrity attacks into clean, preprocessed ECG+PPG windows. Every attacked
+window keeps its clean counterfactual and its ground-truth cause.
 
-v2 changes (paper §4.3 alignment):
-  * FACTORIAL design: {replay} ∪ ({spike,stuck_at,drift,bias} × {FDI, spoofing}).
-  * PER-MORPHOLOGY severity schedule (paper Table 4) — a shared grid is NOT comparable
-    across morphologies, so each morphology has its own L1..L4 magnitude + duration.
-    Levels are ORDINAL (1..4); the realised magnitude is recorded per window so RQ4
-    curves are plotted PER MORPHOLOGY, never on a shared axis.
-  * PLAUSIBILITY bounds are PER CHANNEL and DECOUPLED from the severity grid, so the
-    top severity level no longer collides with the clip (old bug). Bounds are applied
-    in the loader's within-patient normalized (z-scored) space; the per-channel
-    sigma-multiples below are the normalized-space calibration of the physical ranges
-    in paper Table 5. The loader stores zscore_mean/std per channel, so physical-unit
-    bounds can be recovered by de-normalization if required.
-  * CROSS-PATIENT replay in addition to same-patient replay (paper §4.3.3).
+Design:
+  * Factorial grid: {replay} U ({spike, stuck_at, drift, bias} x {FDI, spoofing}).
+  * Per-morphology severity schedule (paper Table I). Levels L1-L4 are ordinal within
+    a morphology, and the realised magnitude is recorded for every window, so results
+    are compared within a morphology, never on a shared axis.
+  * Per-channel plausibility bounds [l_c, u_c] = mu_c +/- k_c * sigma_c, independent
+    of the severity grid. They are applied in the loader's within-record z-scored
+    space; the loader stores the per-channel mean and SD, so the bounds can be
+    converted back to physical units. FDI stays inside the bounds, spoofing leaves them.
+  * Same-patient and cross-patient replay.
 
-Durations are in SECONDS (waveform-appropriate at 125 Hz), adapting DSTAN-Med's
-step-based durations. (Paper Table 4's "d (steps)" column should be restated in
-seconds/window-fraction for the waveform setting — flagged for the revision.)
+Durations are in seconds at 125 Hz, adapted from DSTAN-Med's step-based schedule.
 """
 
 from __future__ import annotations
@@ -37,7 +29,7 @@ FDI_MORPHOLOGIES = ("spike", "stuck_at", "drift", "bias")
 LEVELS = (1, 2, 3, 4)                       # ordinal severity L1..L4
 MECHANISM_PRESERVATION = {"replay": 1.0, "fdi": 0.5, "spoofing": 0.0}
 
-# Per-morphology severity schedule (paper Table 4). Magnitudes in per-patient-sigma
+# Per-morphology severity schedule (paper Table I). Magnitudes in per-patient-sigma
 # units; durations in seconds. Index by level-1.
 SEVERITY_SCHEDULE = {
     "spike":    {"kind": "point",  "mag": [0.5, 1.0, 2.0, 4.0],

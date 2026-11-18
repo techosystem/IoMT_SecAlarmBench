@@ -1,28 +1,26 @@
 """
-IoMT-SecAlarmBench — Evaluation Harness
-=======================================
+Evaluation harness for IoMT-SecAlarmBench.
 
 The shared substrate every baseline plugs into. It:
-  1. rebuilds the windowed dataset (clean + attacked signal arrays) from the loaded
-     records, deterministically matching secalarmbench_labels.csv;
-  2. extracts per-window features, INCLUDING the ECG-PPG cross-channel coupling that
-     integrity attacks break (the benchmark's discriminative signal);
-  3. makes a LEAK-FREE patient-wise train/val/test split (whole records to one side,
-     stratified by arrhythmia type);
-  4. exposes a uniform Detector interface (fit / score) so any RQ1 detector is a thin
-     adapter — Isolation Forest is the first;
-  5. scores RQ1 (AUPRC / F1, un-adjusted), RQ4 (per-morphology stealthiness), and
-     RQ5 (latency), and writes results to disk for the paper tables.
+  1. rebuilds the windowed dataset (clean and attacked signal arrays) from the loaded
+     records, deterministically and row-aligned with the labels table;
+  2. extracts the 22 per-window features, including the ECG-PPG coupling features
+     that integrity attacks break;
+  3. makes a record-disjoint train/val/test split, stratified by alarm type (CinC has
+     no patient identifiers, so each record is its own unit);
+  4. exposes a uniform Detector interface (fit / score);
+  5. scores detection overall, per morphology and per attacker setting, and writes
+     the results to disk.
 
-Usage (Colab):
+Usage:
     from cinc_loader import load_cinc_records
     from injection_generator import GeneratorConfig
     from eval_harness import build_dataset, patient_wise_split, IsolationForestDetector, run_rq1
 
-    records = load_cinc_records(f"{REPO}/data/cinc2015/training")
+    records = load_cinc_records("data/cinc2015/training")
     df, feat_cols = build_dataset(records, GeneratorConfig())
     df = patient_wise_split(df)
-    res = run_rq1(df, df[feat_cols].values, IsolationForestDetector(), out_dir=REPO)
+    res = run_rq1(df, df[feat_cols].values, IsolationForestDetector(), out_dir="results")
 """
 
 from __future__ import annotations
@@ -34,7 +32,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import average_precision_score, roc_auc_score, precision_recall_fscore_support
 
-from cinc_adapter import build_windows
+from cinc_adapter import build_windows, _generate_settings
 from injection_generator import GeneratorConfig, generate_benchmark
 
 FS = 125.0
@@ -97,7 +95,8 @@ def window_features(win, channels, fs=FS, core=("ECG", "PPG")):
 
 def build_dataset(records, cfg=None, target_channels=("PPG",), win_sec=10.0,
                   hop_sec=5.0, max_hosts_per_record=2, artifact_frac=0.10,
-                  core_channels=("ECG", "PPG"), return_windows=False, verbose=True):
+                  core_channels=("ECG", "PPG"), return_windows=False, verbose=True,
+                  settings=None):
     """Rebuild the benchmark windows (deterministic) and return (feature_df, feature_cols).
 
     If return_windows=True, also returns a raw core-channel tensor `windows` of shape
@@ -106,6 +105,12 @@ def build_dataset(records, cfg=None, target_channels=("PPG",), win_sec=10.0,
     core_channels only, so both the matrix and the tensor are rectangular across
     enrichment tiers. Clean-window arrays are re-sliced from records via the window_id
     index; attack arrays come from the generator. Matches secalarmbench_labels.csv.
+
+    settings=None gives the C1-PPG attacks only. settings=("C3_JOINT_COORDINATED",)
+    etc. replaces the attack rows with the named attacker-level sets (see
+    cinc_adapter.assemble_benchmark); the clean rows are identical either way, and the
+    df gains setting / attacker_level / coordination columns. Run ONE setting per call
+    when return_windows=True: each setting adds ~40k windows of [2, 1250] float64.
     """
     cfg = cfg or GeneratorConfig()
     W = int(round(win_sec * FS)); H = int(round(hop_sec * FS))
@@ -119,8 +124,11 @@ def build_dataset(records, cfg=None, target_channels=("PPG",), win_sec=10.0,
     hosts, banks, clean_rows, host_labels = build_windows(
         records, win_sec=win_sec, hop_sec=hop_sec,
         max_hosts_per_record=max_hosts_per_record, artifact_frac=artifact_frac)
-    attacked, manifest = generate_benchmark(
-        hosts, target_channels=list(target_channels), cfg=cfg, replay_banks=banks)
+    if settings is None:
+        attacked, manifest = generate_benchmark(
+            hosts, target_channels=list(target_channels), cfg=cfg, replay_banks=banks)
+    else:
+        attacked, manifest = _generate_settings(hosts, banks, cfg, settings)
 
     rows = []
     # --- clean windows: re-slice arrays from records by window_id ---
@@ -136,6 +144,8 @@ def build_dataset(records, cfg=None, target_channels=("PPG",), win_sec=10.0,
                      cls=cr["cls"], family="none", morphology="none",
                      level=-1, target_channel="", alarm_type=cr["alarm_type"],
                      true_alarm=cr["true_alarm"])
+        if settings is not None:
+            feats.update(setting="none", attacker_level="none", coordination="none")
         rows.append(feats)
         if return_windows:
             wins.append(_core(win, rec["channels"]))
@@ -153,6 +163,9 @@ def build_dataset(records, cfg=None, target_channels=("PPG",), win_sec=10.0,
                      replay_source=(m["replay_source"] if "replay_source" in m
                                     and pd.notna(m["replay_source"]) else ""),
                      alarm_type=hl.get("alarm_type", ""), true_alarm=hl.get("true_alarm", pd.NA))
+        if settings is not None:
+            feats.update(setting=m["setting"], attacker_level=m["attacker_level"],
+                         coordination=m["coordination"])
         rows.append(feats)
         if return_windows:
             wins.append(_core(aw.attacked, rec["channels"]))
@@ -160,7 +173,7 @@ def build_dataset(records, cfg=None, target_channels=("PPG",), win_sec=10.0,
     df = pd.DataFrame(rows)
     meta_cols = ["record_id", "patient_id", "window_id", "cls", "family",
                  "morphology", "level", "target_channel", "replay_source",
-                 "alarm_type", "true_alarm"]
+                 "alarm_type", "true_alarm", "setting", "attacker_level", "coordination"]
     feat_cols = [c for c in df.columns if c not in meta_cols]
     n_nan = int(df[feat_cols].isna().sum().sum())
     if n_nan:
@@ -225,7 +238,7 @@ class IsolationForestDetector(Detector):
 
 
 # --------------------------------------------------------------------------- #
-# 5. RQ1 detection (+ RQ4 per-morphology, RQ5 latency)
+# 5. Detection (overall, per morphology, latency)
 # --------------------------------------------------------------------------- #
 
 def _best_f1_threshold(y, s):
@@ -244,7 +257,7 @@ def run_rq1(df, X, detector, out_dir=None):
     for classical detectors, or the [N, C, T] window tensor (from build_dataset with
     return_windows=True) for deep detectors. Positives = attack, negatives =
     physiology_normal. Reports AUPRC/AUROC + F1 at a val-selected operating point, plus
-    per-morphology stealthiness (RQ4) and latency (RQ5).
+    per-morphology detection rates and latency.
     """
     df = df.reset_index(drop=True).copy()
     X = np.asarray(X)
@@ -327,6 +340,76 @@ def run_rq1(df, X, detector, out_dir=None):
             rq4["replay"].to_csv(f"{out_dir}/rq4_replay_{detector.name}.csv", header=["detection_rate"])
         print(f"\n[saved] rq1_{detector.name}.csv + rq4_fdi/spoofing/replay_{detector.name}.csv")
     return metrics, rq4
+
+
+def run_rq1_by_setting(df, X, detector, far=0.05, out_dir=None, tag=""):
+    """Attacker-setting table: fit ONCE on TRAIN physiology_normal, then score
+    every attacker-level set with the same detector and the same operating point.
+
+    The operating point is fixed by the false-alarm rate on VAL physiology_normal
+    (default 5%), so it does not depend on which attacks are in df. Reports, per
+    setting and per family (TEST split):
+      AUPRC, AUROC        attacks vs all test physiology_normal windows
+      AUROC_host_matched  attacks vs their own clean host windows (position-matched)
+      det_rate_at_far     share of attacks above the fixed threshold
+    df without a 'setting' column is treated as the C1_PPG setting.
+    """
+    df = df.reset_index(drop=True).copy()
+    X = np.asarray(X)
+    if "setting" not in df.columns:
+        df["setting"] = np.where(df.cls == "attack", "C1_PPG", "none")
+    tr_mask = ((df.split == "train") & (df.cls == "physiology_normal")).values
+    t0 = time.perf_counter(); detector.fit(X[tr_mask]); fit_s = time.perf_counter() - t0
+    df["score"] = np.asarray(detector.score(X)).ravel()
+
+    val_norm = df[(df.split == "val") & (df.cls == "physiology_normal")]["score"].values
+    op_source = "val_normal"
+    if len(val_norm) == 0:          # tiny demo splits only; real CinC splits have val
+        val_norm = df[tr_mask]["score"].values
+        op_source = "train_normal (no val windows)"
+    thr = float(np.quantile(val_norm, 1 - far))
+    te = df[df.split == "test"]
+    neg = te[te.cls == "physiology_normal"]
+    host_ids = set(df.loc[df.cls == "attack", "window_id"])
+    neg_host = neg[neg.window_id.isin(host_ids)]
+    test_far = float((neg["score"] >= thr).mean())
+
+    def _row(setting, family, g):
+        y = np.r_[np.ones(len(g)), np.zeros(len(neg))]
+        s = np.r_[g["score"].values, neg["score"].values]
+        own = neg_host[neg_host.window_id.isin(set(g.window_id))]
+        yh = np.r_[np.ones(len(g)), np.zeros(len(own))]
+        sh = np.r_[g["score"].values, own["score"].values]
+        return dict(detector=detector.name, setting=setting, family=family,
+                    n_attack=int(len(g)), n_host=int(len(own)),
+                    AUPRC=round(float(average_precision_score(y, s)), 4),
+                    AUROC=round(float(roc_auc_score(y, s)), 4),
+                    AUROC_host_matched=(round(float(roc_auc_score(yh, sh)), 4)
+                                        if len(own) and len(g) else float("nan")),
+                    det_rate_at_far=round(float((g["score"] >= thr).mean()), 4))
+
+    rows = []
+    atk = te[te.cls == "attack"]
+    for setting, g in atk.groupby("setting", sort=False):
+        rows.append(_row(setting, "all", g))
+        for fam, gg in g.groupby("family"):
+            rows.append(_row(setting, fam, gg))
+        warp = g[g.morphology == "rate_warp"]
+        if len(warp):
+            rows.append(_row(setting, "fdi_rate_warp", warp))
+        rep = g[g.family == "replay"]
+        if len(rep) and "replay_source" in rep:
+            for src, gg in rep.groupby("replay_source"):
+                rows.append(_row(setting, f"replay_{src}", gg))
+    out = pd.DataFrame(rows)
+    print(f"\n=== Attacker-level sensitivity: {detector.name} | threshold at "
+          f"{far:.0%} FAR on {op_source} (achieved test FAR {test_far:.3f}) | fit {fit_s:.1f}s ===")
+    print(out.to_string(index=False))
+    if out_dir:
+        path = f"{out_dir}/rq1_by_setting_{detector.name}{tag}.csv"
+        out.to_csv(path, index=False)
+        print(f"[saved] {path}")
+    return out
 
 
 # --------------------------------------------------------------------------- #

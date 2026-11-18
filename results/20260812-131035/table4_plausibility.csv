@@ -1,5 +1,0 @@
-channel,k_sigma,bound_lo,bound_hi,units
-ABP,4.0,mu_c - 4*sd_c,mu_c + 4*sd_c,per-patient sigma (within-patient z-scored space)
-ECG,5.0,mu_c - 5*sd_c,mu_c + 5*sd_c,per-patient sigma (within-patient z-scored space)
-PPG,4.0,mu_c - 4*sd_c,mu_c + 4*sd_c,per-patient sigma (within-patient z-scored space)
-RESP,4.0,mu_c - 4*sd_c,mu_c + 4*sd_c,per-patient sigma (within-patient z-scored space)

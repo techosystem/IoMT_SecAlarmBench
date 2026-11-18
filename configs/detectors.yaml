@@ -1,21 +1,31 @@
+# Detector settings (paper Table II). Documentation of the defaults in
+# src/eval_harness.py, src/deep_detectors.py and src/extras.py; the code does
+# not read this file. results/paper/hyperparameters.json records the
+# values read from the detector objects in the reported run.
 common:
   epochs: 40
+  optimizer: adam
   grad_clip: 1.0
   seeds: [0, 1, 2, 3, 4]
   deterministic: true          # required; see docs/REPRODUCE.md
-  temporal_pooling: 10         # 10x; see the LSTM-AE no-pooling ablation
   train_on: [physiology-normal]
 
 evaluation:
   point_adjustment: false      # never
-  event_aware: true
-  matched_far: 0.10            # calibrated on VALIDATION normals
+  matched_far: 0.10            # Table IV, calibrated on VALIDATION normals
+  setting_far: 0.05            # Table V
   report_chance_floor: true
 
 detectors:
-  isolation_forest: {features: engineered_22, n_estimators: 100}
-  lstm_ae:          {hidden: 64, layers: 2}
-  usad:             {hidden: 64, alpha: 0.5, beta: 0.5}
-  omnianomaly:      {hidden: 64, latent: 8}
-  gdn:              {embed: 64, topk: 2}
-  tranad:           {d_model: 64, heads: 4}
+  isolation_forest: {features: engineered_22, n_estimators: 200, standardized: true}
+  usad:             {pooling: 1, hidden: 256, latent: 40, alpha: 0.5, beta: 0.5, lr: 1.0e-4, batch: 256}
+  lstm_ae:          {pooling: 10, hidden: 64, latent: 32, lr: 1.0e-3, batch: 256}
+  gdn:              {pooling: 10, window: 20, embedding: 32, hidden: 64, lr: 1.0e-3, batch: 512}
+  tranad:           {pooling: 10, d_model: 64, heads: 4, layers: 1, lr: 1.0e-3, batch: 256}
+  omnianomaly:      {pooling: 10, hidden: 64, latent: 16, beta: 1.0, lr: 1.0e-3, batch: 256}
+  coherence:        {features: [hr_diff, unmatched, ptt_sd, ptt_maxdev, cnt_mismatch],
+                     score: sum_of_positive_robust_z}
+
+random_forest:
+  discrimination: {n_estimators: 300, class_weight: balanced, random_state: 20260724}
+  wustl_audit:    {n_estimators: 200, class_weight: balanced, random_state: 20260724}

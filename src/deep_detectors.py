@@ -1,20 +1,15 @@
 """
-IoMT-SecAlarmBench — Deep anomaly detectors
-============================================
+Deep anomaly detectors for IoMT-SecAlarmBench.
 
-Deep baselines that plug into eval_harness's Detector interface and operate directly
-on the [N, C, T] window tensor from build_dataset(return_windows=True). Each is
-SEMI-SUPERVISED / training-free of labels: fit on TRAIN physiology-normal windows,
-score every window by reconstruction error. Scores feed the same run_rq1 as the
-classical detectors, so results drop straight into Table 3-R alongside Isolation Forest.
+Each detector plugs into eval_harness's Detector interface and operates on the
+[N, C, T] window tensor from build_dataset(return_windows=True). All are trained on
+physiology-normal training windows only and score every window by reconstruction or
+prediction error, so their scores feed the same evaluation as Isolation Forest.
 
-Why not TSB-AD / DeepOD: those libraries assume a *continuous* time series with internal
-windowing and their own range-based metrics. This benchmark is pre-windowed with a
-patient-wise fit-on-normal / score-per-window protocol, so the model architectures are
-implemented directly here — cleaner and directly comparable to the classical row.
-
-Included: LSTMAEDetector (reconstruction, pooling front-end), USADDetector (adversarial).
-The reconstruction base is a template for ConvAE / TranAD etc. GPU is used if available.
+Detectors: LSTM-AE, USAD, GDN, TranAD and OmniAnomaly. They are implemented here
+rather than taken from TSB-AD or DeepOD, which assume a continuous series with their
+own internal windowing and metrics; this benchmark is pre-windowed and evaluated per
+window. A GPU is used when available.
 """
 
 from __future__ import annotations
@@ -416,7 +411,7 @@ class TranADDetector(Detector, _NormMixin):
 # a GRU decoder emits a Gaussian observation model (mean AND learned variance).
 # Trained by ELBO (Gaussian reconstruction log-likelihood + KL). Anomaly score =
 # reconstruction NLL ("reconstruction probability") — higher = more anomalous. This
-# is the faithful probabilistic core; the paper's planar-flow + linear-Gaussian
+# is the faithful probabilistic core; the original paper's planar-flow + linear-Gaussian
 # state-space refinements are omitted. logvars are clamped and grads clipped to
 # prevent the variance-collapse instability VAEs are prone to.
 # --------------------------------------------------------------------------- #

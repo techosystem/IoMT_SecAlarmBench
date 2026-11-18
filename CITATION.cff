@@ -1,37 +1,43 @@
 cff-version: 1.2.0
 message: "If you use this benchmark, please cite the paper below and the source corpora."
-title: "IoMT-SecAlarmBench: A Counterfactual Benchmark for Integrity Attacks in IoMT"
+title: "IoMT-SecAlarmBench: A Semi-Synthetic Counterfactual Benchmark for Integrity Attacks in IoMT"
 abstract: >-
   A semi-synthetic benchmark that injects controlled integrity attacks into
-  genuine coupled ECG+PPG ICU recordings under a factorial design, retaining
-  the counterfactual clean signal for every attacked window.
+  authentic coupled ECG+PPG ICU recordings from PhysioNet/CinC 2015 under a
+  factorial design and three attacker capability levels, retaining the clean
+  waveform of every attacked window for signal-level and alarm-level
+  counterfactual evaluation.
 type: software
 license: MIT
-repository-code: "https://github.com/techosystem/IoMT-SecAlarmBench"
-version: "1.0.0"
-date-released: "2026-08-21"
+repository-code: "https://github.com/techosystem/IoMT_SecAlarmBench"
+version: "2.0.0"
+date-released: "2026-11-18"
 keywords:
   - IoMT
   - benchmark
   - false data injection
   - replay attack
   - anomaly detection
-  - counterfactual root-cause analysis
+  - counterfactual evaluation
+  - patient safety
 authors:
-  - Full_name: "Emmanuel Ugwuabonyi"   
+  - given-names: "Emmanuel C."
+    family-names: "Ugwuabonyi"
     affiliation: "University of Maryland, Baltimore County"
-
-  - Full_name: "Dmitri Perkins"
+  - given-names: "Dmitri"
+    family-names: "Perkins"
     affiliation: "University of Maryland, Baltimore County"
-    
 preferred-citation:
-  type: conference-paper
-  title: "IoMT-SecAlarmBench: A Counterfactual Benchmark for Integrity Attacks in IoMT"
+  type: article
+  title: "IoMT-SecAlarmBench: A Semi-Synthetic Counterfactual Benchmark for Integrity Attacks in IoMT"
   year: 2026
-  collection-title: "Proc. IEEE International Conference on Big Data (BigData)"
+  journal: "arXiv preprint arXiv:2608.26416"
+  url: "https://arxiv.org/abs/2608.26416"
+  identifiers:
+    - type: doi
+      value: "10.48550/arXiv.2608.26416"
   authors:
-    - First-name: "Emmanuel"
-      Last-name: "Ugwuabonyi"
-   
-    - First-name: "Dmitri"
-      Last-name: "Perkins"
+    - given-names: "Emmanuel C."
+      family-names: "Ugwuabonyi"
+    - given-names: "Dmitri"
+      family-names: "Perkins"

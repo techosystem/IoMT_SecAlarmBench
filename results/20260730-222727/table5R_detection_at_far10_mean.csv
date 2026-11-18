@@ -1,7 +1,0 @@
-detector,FAR_physiology_normal,FAR_fault_artifact,FAR_physiology_event,replay,fdi_spike,fdi_spike_L1,fdi_sustained,spoofing_sustained
-IsolationForest,0.05,0.263,0.046,0.099,0.108,0.088,0.446,0.961
-LSTM-AE,0.07,0.128,0.098,0.165,0.149,0.149,0.506,0.972
-USAD,0.088,0.124,0.1,0.121,0.12,0.116,0.38,0.909
-GDN,0.082,0.15,0.124,0.18,0.179,0.179,0.42,0.945
-TranAD,0.082,0.134,0.115,0.148,0.133,0.129,0.68,0.981
-OmniAnomaly,0.106,0.097,0.104,0.202,0.188,0.185,0.501,0.887

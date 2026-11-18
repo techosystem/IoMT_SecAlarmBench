@@ -1,17 +1,24 @@
 """
-IoMT-SecAlarmBench — CinC/MIMIC adapter + benchmark assembler (v2)
-==================================================================
+CinC adapter and benchmark assembler for IoMT-SecAlarmBench.
 
-Turns loaded records (from cinc_loader / mimic_loader) into generator inputs, runs the
-factorial grid, and assembles ONE labeled table fusing the four classes:
+Turns loaded records (from cinc_loader) into generator inputs, runs the factorial
+attack grid, and assembles one labeled table with four classes:
 
     physiology_normal   clean windows away from the alarm region
-    physiology_event    clean windows over a TRUE-alarm region
-    fault_artifact      clean windows over a FALSE-alarm region OR high-artifact windows
-    attack              injected windows (from injection_generator v2)
+    physiology_event    clean windows over a true-alarm region
+    fault_artifact      clean windows over a false-alarm region, or high-artifact windows
+    attack              injected windows
 
-Replay banks are keyed (record_id, channel) and passed whole to generate_benchmark, so
-both same-patient and cross-patient replay are available.
+Replay banks are keyed (record_id, channel) and passed whole to generate_benchmark,
+so both same-patient and cross-patient replay are available.
+
+Attacker settings (``settings=``), all generated on the same hosts and replay banks:
+  C1_PPG                 34 conditions on the PPG channel
+  C1_ECG                 the same 34 conditions on the ECG channel
+  C2_JOINT_INDEPENDENT   both channels attacked independently
+  C3_JOINT_COORDINATED   both channels attacked consistently (joint replay,
+                         coordinated FDI/spoofing, rate warp)
+With settings=None (default) the table contains the C1-PPG attacks only.
 """
 
 from __future__ import annotations
@@ -109,7 +116,10 @@ def build_windows(records, win_sec=10.0, hop_sec=5.0, fs=FS,
 # --------------------------------------------------------------------------- #
 def assemble_benchmark(records=None, cfg=None, target_channels=("PPG",),
                        win_sec=10.0, hop_sec=5.0, max_hosts_per_record=2,
-                       artifact_frac=0.10):
+                       artifact_frac=0.10, settings=None):
+    """settings=None generates the target_channels attacks only (C1-PPG by default).
+    settings=("C1_ECG", ...) generates the named attacker-level sets instead; include
+    "C1_PPG" to get the PPG attacks in the same table."""
     cfg = cfg or GeneratorConfig()
     records = records if records is not None else load_cinc_records()
     if not records:
@@ -125,8 +135,11 @@ def assemble_benchmark(records=None, cfg=None, target_channels=("PPG",),
         raise ValueError(f"No host windows from {len(records)} records ({len(clean_rows)} "
                          f"clean). Check alarm_onset_sample and channels {avail}.")
 
-    attacked, atk = generate_benchmark(
-        hosts, target_channels=list(target_channels), cfg=cfg, replay_banks=banks)
+    if settings is None:
+        attacked, atk = generate_benchmark(
+            hosts, target_channels=list(target_channels), cfg=cfg, replay_banks=banks)
+    else:
+        attacked, atk = _generate_settings(hosts, banks, cfg, settings)
 
     if atk.empty:
         avail = sorted({ch for w in hosts for ch in w.channels})
@@ -149,7 +162,26 @@ def assemble_benchmark(records=None, cfg=None, target_channels=("PPG",),
     table["patient_id"] = table["patient_id"].fillna(table["record_id"])
     # tidy empties: no target channel / not-an-attack rows
     table["target_channel"] = table["target_channel"].fillna("")
+    if settings is not None:
+        for col in ("setting", "attacker_level", "coordination"):
+            table[col] = table[col].fillna("none")
     return table, attacked
+
+
+def _generate_settings(hosts, banks, cfg, settings):
+    """Run the attacker-level sets on the release's hosts and replay banks.
+
+    The banks stack every clean candidate window per (record, channel) in the same
+    order for ECG and PPG, so row i of both banks is the same source window and they
+    can be paired for joint replay. As in the release, banks may include overlapping
+    windows and the host itself; this keeps the new sets comparable to the release.
+    """
+    from injection_multichannel import (
+        MultiChannelConfig, generate_multichannel, joint_banks_from_channel_banks)
+    mc = MultiChannelConfig(base=cfg)
+    joint = joint_banks_from_channel_banks(banks, mc.pair)
+    return generate_multichannel(hosts, settings=tuple(settings), mc=mc,
+                                 replay_banks=banks, joint_banks=joint)
 
 
 def table2_composition(table):

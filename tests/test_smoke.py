@@ -52,3 +52,23 @@ def test_no_waveform_files_committed():
                              capture_output=True, text=True).stdout.split()
     offenders = [f for f in tracked if Path(f).suffix in banned]
     assert not offenders, f"waveform data committed: {offenders}"
+
+
+def test_multichannel_generator_self_test():
+    """C1-ECG, C2 and C3 attacks: per-host counts, seeds and counterfactuals."""
+    import injection_multichannel
+    injection_multichannel._self_test()
+
+
+def test_reported_results_present():
+    """The paper's results ship with the repo and match Fig. 2."""
+    import pandas as pd
+    res = ROOT / "results" / "paper"
+    for name in ("detection_summary_v1.csv", "grid_morph_level_v1.csv", "alarm_oracle_effects.csv",
+                 "rq4_variants.json", "wustl_audit.csv", "hyperparameters.json"):
+        assert (res / name).exists(), name
+    g = pd.read_csv(res / "grid_morph_level_v1.csv")
+    learned = ["IsolationForest", "USAD", "LSTM-AE", "GDN", "TranAD", "OmniAnomaly"]
+    cell = g[g.detector.isin(learned) & (g.setting == "C1-PPG") & (g.family == "fdi")
+             & (g.morphology == "bias") & (g.level == 1)]
+    assert round(100 * cell.hmAUROC.mean()) == 60
